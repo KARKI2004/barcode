@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'item_list_screen.dart';
 
 Map<String, List<Map<String, String>>> inventoryByLocation = {
@@ -285,7 +286,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
               ElevatedButton(
                 child: const Text("Delete"),
                 onPressed: () {
@@ -294,9 +298,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     _deleteLocation(location);
                   } else if (mounted) {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Incorrect password.")),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(const SnackBar(content: Text("Incorrect password.")));
                   }
                 },
               ),
@@ -314,7 +318,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         child: locations.isEmpty
             ? const Center(child: Text("No locations yet."))
             : GridView.count(
-                crossAxisCount: 5,
+                crossAxisCount: 3,
                 padding: const EdgeInsets.all(16),
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
@@ -336,26 +340,33 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.location_on, size: 28, color: Colors.green),
+                                const Icon(
+                                  Icons.location_on,
+                                  size: 28,
+                                  color: Colors.green,
+                                ),
                                 const SizedBox(height: 4),
                                 Text(
                                   loc,
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
                           Positioned(
-                            top: 4,
-                            right: 28,
+                            bottom: -6,
+                            left: 4,
                             child: IconButton(
                               icon: const Icon(Icons.edit, size: 18, color: Colors.blue),
                               onPressed: () => _renameLocation(loc),
                             ),
                           ),
                           Positioned(
-                            top: 4,
+                            bottom: -6,
                             right: 4,
                             child: IconButton(
                               icon: const Icon(Icons.delete, size: 18, color: Colors.red),

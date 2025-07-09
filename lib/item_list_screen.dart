@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'main.dart'; // Access inventoryByLocation map
 
 class ItemListScreen extends StatefulWidget {
@@ -14,8 +15,7 @@ class ItemListScreen extends StatefulWidget {
 }
 
 class _ItemListScreenState extends State<ItemListScreen> {
-  List<Map<String, String>> get items =>
-      inventoryByLocation[widget.locationName] ?? [];
+  List<Map<String, String>> get items => inventoryByLocation[widget.locationName] ?? [];
 
   String scannedBarcode = "";
 
@@ -38,8 +38,13 @@ class _ItemListScreenState extends State<ItemListScreen> {
       final List<dynamic> decoded = jsonDecode(contents);
       if (mounted) {
         setState(() {
-          inventoryByLocation[widget.locationName] =
-              decoded.cast<Map<String, String>>();
+          inventoryByLocation[widget.locationName] = decoded.map<Map<String, String>>((
+            e,
+          ) {
+            return e.map(
+              (key, value) => MapEntry(key.toString(), value?.toString() ?? ''),
+            );
+          }).toList();
         });
       }
     } else {
@@ -61,62 +66,91 @@ class _ItemListScreenState extends State<ItemListScreen> {
       text: editIndex != null ? items[editIndex]["description"] ?? '' : '',
     );
 
+    // Set scannedBarcode to the current item's barcode if editing, else empty
+    scannedBarcode = editIndex != null ? (items[editIndex]["barcode"] ?? '') : '';
+
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text(editIndex != null ? "Edit Item" : "Add New Item"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: "Item Name"),
-              ),
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    scannedBarcode = "1234567890";
-                  });
-                },
-                child: const Text("Scan Barcode"),
-              ),
-              TextField(
-                controller: descriptionController,
-                decoration: const InputDecoration(
-                  labelText: "Description (optional)",
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              child: const Text("Cancel"),
-              onPressed: () => Navigator.pop(context),
-            ),
-            ElevatedButton(
-              child: Text(editIndex != null ? "Update" : "Add"),
-              onPressed: () async {
-                if (nameController.text.trim().isNotEmpty) {
-                  setState(() {
-                    if (editIndex != null) {
-                      items[editIndex]["name"] = nameController.text;
-                      items[editIndex]["description"] = descriptionController.text;
-                      items[editIndex]["barcode"] = scannedBarcode;
-                    } else {
-                      items.add({
-                        "name": nameController.text,
-                        "description": descriptionController.text,
-                        "barcode": scannedBarcode,
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text(editIndex != null ? "Edit Item" : "Add New Item"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(labelText: "Item Name"),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      String? res = await SimpleBarcodeScanner.scanBarcode(
+                        context,
+                        barcodeAppBar: BarcodeAppBar(
+                          appBarTitle: 'Test',
+                          centerTitle: false,
+                          enableBackButton: true,
+                          backButtonIcon: Icon(Icons.arrow_back),
+                        ),
+                        isShowFlashIcon: true,
+                        delayMillis: 500,
+                        cameraFace: CameraFace.back,
+                        scanFormat: ScanFormat.ONLY_BARCODE,
+                      );
+                      setStateDialog(() {
+                        scannedBarcode = res ?? '';
                       });
+                    },
+                    child: const Text("Scan Barcode"),
+                  ),
+                  // Show the scanned barcode for feedback
+                  if (scannedBarcode.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        "Scanned: $scannedBarcode",
+                        style: const TextStyle(fontSize: 14, color: Colors.blueGrey),
+                      ),
+                    ),
+                  TextField(
+                    controller: descriptionController,
+                    decoration: const InputDecoration(
+                      labelText: "Description (optional)",
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  child: const Text("Cancel"),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                ElevatedButton(
+                  child: Text(editIndex != null ? "Update" : "Add"),
+                  onPressed: () async {
+                    if (nameController.text.trim().isNotEmpty) {
+                      setState(() {
+                        if (editIndex != null) {
+                          items[editIndex]["name"] = nameController.text;
+                          items[editIndex]["description"] = descriptionController.text;
+                          items[editIndex]["barcode"] = scannedBarcode;
+                        } else {
+                          items.add({
+                            "name": nameController.text,
+                            "description": descriptionController.text,
+                            "barcode": scannedBarcode,
+                          });
+                        }
+                      });
+                      await _saveItemsToFile();
+                      if (mounted) Navigator.pop(context);
                     }
-                  });
-                  await _saveItemsToFile();
-                  if (mounted) Navigator.pop(context);
-                }
-              },
-            ),
-          ],
+                  },
+                ),
+              ],
+            );
+          },
         );
       },
     );
